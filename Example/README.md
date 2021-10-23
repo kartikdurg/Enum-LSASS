@@ -7,7 +7,7 @@ Run the following in your elevated prompt before executing the compiled binary:
 - restart your machine and login with your credentials
 - Execute sekurlsa_wdigest.exe on elevated prompt.
 
-## Kudos
+## Kudos :)
 
 3gstudent for [sekurlsa-wdigest.cpp](https://github.com/3gstudent/Homework-of-C-Language/blob/master/sekurlsa-wdigest.cpp)
 
