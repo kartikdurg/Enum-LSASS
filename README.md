@@ -10,6 +10,9 @@ Reason behind porting this feature from `pypykatz` to C-Lang:
 
 - Replace the LSASS enumeration in `mimikatz`. Check the `Example` folder in this repo.
 - Using this feature on target without python.
+- Applying antivirus evasion technqiues mentioned in [SCRT Team blog](https://blog.scrt.ch/2020/06/19/engineering-antivirus-evasion/)
 
 # Kudos
+
 @SkelSec for [pypykatz](https://github.com/skelsec/pypykatz)  
+@scrtsa for [avcleaner](https://github.com/scrt/avcleaner)
