@@ -9,7 +9,7 @@ This method can succeed because of two possible reasons:
 Reason behind porting this feature from `pypykatz` to C-Lang:
 
 - Replace the LSASS enumeration in `mimikatz`. Check the `Example` folder in this repo.
-- Using this feature on target without python.
+- Using this feature on targets that doesn't have python installed.
 - Applying antivirus evasion technqiues mentioned in [SCRT Team blog](https://blog.scrt.ch/2020/06/19/engineering-antivirus-evasion/)
 
 # Kudos
