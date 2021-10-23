@@ -12,7 +12,7 @@ Reason behind porting this feature from `pypykatz` to C-Lang:
 - Using this feature on targets that doesn't have python installed.
 - Applying antivirus evasion technqiues mentioned in [SCRT Team blog](https://blog.scrt.ch/2020/06/19/engineering-antivirus-evasion/)
 
-# Kudos
+# Kudos :)
 
 @SkelSec for [pypykatz](https://github.com/skelsec/pypykatz)  
 @scrtsa for [avcleaner](https://github.com/scrt/avcleaner)
